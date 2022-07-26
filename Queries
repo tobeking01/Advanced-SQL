@@ -1,0 +1,247 @@
+create database weather;
+
+
+CREATE TABLE location (
+    stationName VARCHAR(30),
+    latitude INTEGER,
+    longitude INTEGER,
+    PRIMARY KEY (stationName)
+);
+
+SELECT 
+    *
+FROM
+    location;
+
+drop table location;
+
+CREATE TABLE wind (
+    stationName VARCHAR(30),
+    Year INTEGER,
+    Month VARCHAR(15),
+    knots DECIMAL(6 , 2 ),
+    PRIMARY KEY (stationName , Year , Month),
+    FOREIGN KEY (stationName)
+        REFERENCES location (stationName)
+);
+
+
+
+
+alter table wind
+rename column wind_speed to knots;
+
+SELECT 
+    *
+FROM
+    wind
+LIMIT 10;
+drop table wind;
+SELECT 
+    COUNT(*)
+FROM
+    wind;
+    
+    
+CREATE TABLE temperature (
+    stationName VARCHAR(30),
+    year INTEGER,
+    month VARCHAR(15),
+    celcius DECIMAL(6 , 2 ),
+    PRIMARY KEY (stationName , year , month),
+    FOREIGN KEY (stationName)
+        REFERENCES location (stationName)
+);
+
+alter table temperature
+rename column temperature to celcius;
+SELECT 
+    *
+FROM
+    temperature
+LIMIT 10;
+
+drop table temperature;
+SELECT 
+    COUNT(*)
+FROM
+    temperature;
+#limit 10;
+
+
+alter table location
+Modify latitude integer;
+
+alter table location
+Modify longitude integer;
+
+DELETE FROM temperature;
+
+SET SQL_SAFE_UPDATES = 1;
+
+
+load data infile 'C:\Users\tunei\Downloads\wind.csv' 
+     into table wind 
+     fields terminated by ',' 
+          lines terminated by '\n';
+
+alter table wind modify station_name integer;
+alter table wind DROP PRIMARY KEY;
+
+#1. Produce a list of station name, year, month, wind speed, temperature.
+SELECT 
+    temperature.stationName,
+    temperature.year AS temperatureYear,
+    temperature.month AS temperatureMonth,
+    temperature.celcius,
+    wind.Year AS windYear,
+    wind.Month AS windMonth,
+    wind.knots
+FROM
+    wind
+        NATURAL JOIN
+    temperature;
+
+#2. For each station, find the total number of valid wind reports and the 
+#total number of valid temperature reports. (Note: do not count NULL as a valid report).   
+SELECT 
+    location.stationName,
+    COUNT(wind.knots) AS 'validWindReports'
+FROM
+    location
+        NATURAL JOIN
+    wind
+WHERE
+    wind.knots IS NOT NULL
+GROUP BY wind.stationName;
+
+
+SELECT 
+    location.stationName,
+    COUNT(temperature.celcius) AS 'validTemperatureReports'
+FROM
+    location
+        NATURAL JOIN
+    temperature
+WHERE
+    temperature.celcius IS NOT NULL
+GROUP BY temperature.stationName;
+
+#3. For each station, find the total number of wind reports and the total number of temperature reports in each year. 
+#From the output, identify stations that did not report a valid reading every month.
+SELECT 
+    location.stationName,
+    wind.year,
+    COUNT(wind.knots) AS numberOfWindReportsPerYear
+FROM
+    location
+        NATURAL JOIN
+    wind
+GROUP BY wind.stationName , wind.Year;
+
+SELECT 
+    location.stationName,
+    COUNT(temperature.celcius) AS numberOfTemperatureReportsPerYear
+FROM
+    location
+        NATURAL JOIN
+    temperature
+GROUP BY location.stationName , temperature.year;
+
+#Stations that did not report a valid reading every month are:
+#numberOfWindReportsPerYear: Adelaide, Clean_Air, Faraday, Grytviken, Halley, Neumayer, Rothera, Signy.
+
+#numberOfTemperatureReportsPerYear: Adelaide, Clean_Air, Faraday, Grytviken, Halley, Neumayer, Rothera, 
+
+#4. Find how many wind speed reports are collected in each month? How many temperature reports are collected each month?
+SELECT 
+    wind.month, COUNT(wind.knots) AS windSpeedReportPerMonth
+FROM
+    wind
+GROUP BY wind.month;
+
+SELECT 
+    temperature.month,
+    COUNT(temperature.celcius) AS temperatureCelciusReportsPerMonth
+FROM
+    temperature
+GROUP BY temperature.month;
+    
+
+#5. For each station, find the first year at which the station started to report wind speeds and the first year at which the station started to report temperature readings.
+SELECT 
+    wind.stationName, MIN(wind.Year) AS firstWindYear
+FROM
+    wind
+GROUP BY wind.stationName;
+
+SELECT 
+    temperature.stationName,
+    MIN(temperature.Year) AS firstTemperatureYear
+FROM
+    temperature
+GROUP BY temperature.stationName;
+
+
+#6. Find the coldest and hottest temperatures for each station.
+SELECT 
+    temperature.stationName,
+    MIN(temperature.celcius) AS 'coldestTemperature',
+    MAX(temperature.celcius) AS 'hottestTemperature'
+FROM
+    temperature
+GROUP BY temperature.stationName;
+
+
+#7	What is the maximum and minimum temperatures reported in 2000? What are the stations that reported these maximum and minimum temperatures?
+SELECT 
+    temperature.stationName,
+    temperature.year,
+    MAX(temperature.celcius) AS 'hottestTemperaturein2000',
+    MIN(temperature.celcius) AS 'coldestTemperaturein2000'
+FROM
+    temperature
+GROUP BY temperature.stationName , temperature.year
+HAVING temperature.year = 2000;
+
+#What are the stations that reported these maximum and minimum temperatures?
+#Solution: Clean_air, Faraday, Halley, Neumayer, Rothera had reports given with values and Grytvken had Null values.
+
+
+#8.	What is the average wind speed at 90-degree latitude? (Note: do not look at the data to find what stations are located at 90-degree latitude, however, you have to use 90 in your query)
+SELECT 
+    AVG(wind.knots) AS 'averageWindSpeed', location.latitude
+FROM
+    location
+        NATURAL JOIN
+    wind
+GROUP BY location.latitude
+HAVING location.latitude = 90;
+
+
+#9.	The name of the weather station at the South Pole is called Clean Air, because very little man-made pollution can be found there. 
+#Find out what temperatures were recorded at the South Pole such that the output is sorted by temperatures. 
+#When is it Summer and when it is winter in South pole?
+SELECT 
+    temperature.stationName, temperature.celcius
+FROM
+    temperature
+GROUP BY temperature.stationName , temperature.celcius
+HAVING temperature.stationName = 'Clean_Air'
+ORDER BY temperature.celcius;
+
+#Based on the Data it is Summer and Winter half of the year.
+
+
+#10. For each station, find the maximum, minimum, and average temperature reported in a certain month of the year. 
+#Comment on when do you think it is summer and when it is winter for each station. 
+SELECT 
+    temperature.stationName,
+    temperature.month AS 'juneSummerMonth',
+    MAX(temperature.celcius) AS maxTemperature,
+    MIN(temperature.celcius) AS minTemperature,
+    AVG(temperature.celcius) AS avgTemperature
+FROM
+    temperature
+GROUP BY temperature.stationName , temperature.month
+HAVING temperature.month = 'jun';
